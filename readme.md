@@ -1,4 +1,4 @@
-# Retrospect API - Golang + Gin + MOngoDB
+# Retrospect API -> Golang + Gin + MOngoDB
 
 Retrospect API is a RESTful API built using Go (Golang) and the Gin framework. It provides endpoints for user registration, authentication, and managing memories.
 
