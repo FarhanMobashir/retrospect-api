@@ -1,6 +1,9 @@
 package main
 
 import (
+	"log"
+	"retrospect-api/controllers"
+	"retrospect-api/middlewares"
 	"retrospect-api/routes"
 
 	"github.com/gin-gonic/gin"
@@ -9,17 +12,18 @@ import (
 func main() {
 	r := gin.Default()
 
-	// r.GET("/ping", func(c *gin.Context) {
-	// 	c.JSON(200, gin.H{
-	// 		"message": "pong",
-	// 	})
-	// })
+	// public routes
+	r.POST("/register", controllers.RegisterUser)
+	r.POST("/login", controllers.LoginUser)
 
-	// middleware
-	// r.Use(middlewares.AuthMiddleware())
+	// Protected routes
+	protected := r.Group("/")
+	protected.Use(middlewares.AuthMiddleware())
 
-	// routes
-	routes.UserRoutes(r)
+	{
+		log.Println("Registering memory routes")
+		routes.MemoryRoutes(protected)
+	}
 
 	r.Run(":8080")
 }

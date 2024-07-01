@@ -8,18 +8,18 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"golang.org/x/crypto/bcrypt"
 )
 
 var userCollection *mongo.Collection
 
 func init() {
-	// setup mongodb client and collection
 	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
 	client, err := mongo.Connect(context.Background(), clientOptions)
-
 	if err != nil {
 		panic(err)
 	}
@@ -29,27 +29,40 @@ func init() {
 	}
 
 	userCollection = client.Database("goapi").Collection("users")
+
+	// Create a unique index on the username field
+	indexModel := mongo.IndexModel{
+		Keys:    bson.M{"username": 1},
+		Options: options.Index().SetUnique(true),
+	}
+	_, err = userCollection.Indexes().CreateOne(context.Background(), indexModel)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func RegisterUser(c *gin.Context) {
 	var user models.User
-
 	if err := c.BindJSON(&user); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error()})
-	}
-
-	hashedPassword, err := utils.HashPassword(user.Password)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	user.Password = hashedPassword
-
-	_, err = userCollection.InsertOne(context.Background(), user)
-
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "error hashing password"})
+		return
+	}
+	user.Password = string(hashedPassword)
+
+	user.ID = primitive.NewObjectID()
+	_, err = userCollection.InsertOne(context.Background(), user)
+	if err != nil {
+		// Check if the error is due to a duplicate username
+		if mongo.IsDuplicateKeyError(err) {
+			c.JSON(http.StatusConflict, gin.H{"error": "username already exists"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
