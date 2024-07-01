@@ -3,10 +3,12 @@ package controllers
 import (
 	"context"
 	"net/http"
+	"os"
 	"retrospect-api/models"
 	"retrospect-api/utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -18,7 +20,16 @@ import (
 var userCollection *mongo.Collection
 
 func init() {
-	clientOptions := options.Client().ApplyURI("mongodb://localhost:27017")
+
+	// Load environment variables from .env file
+	if err := godotenv.Load(); err != nil {
+		panic("Error loading .env file")
+	}
+
+	// Get MongoDB URL from environment variable
+	mongoURL := os.Getenv("MONGO_URL")
+
+	clientOptions := options.Client().ApplyURI(mongoURL)
 	client, err := mongo.Connect(context.Background(), clientOptions)
 	if err != nil {
 		panic(err)
